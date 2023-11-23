@@ -1,13 +1,14 @@
 use sdl2::{render::WindowCanvas, Sdl, EventPump};
 use crate::core::constants;
 use crate::assets::world::World;
+use crate::core::controller::Controller;
 
 pub trait Renderable {
     fn render(&self, canvas : &mut WindowCanvas);
 }
 
 pub trait Updatable {
-    fn update_state(&mut self);
+    fn update_state(&mut self, controller: &mut Controller);
 }
 
 pub struct Screen {
@@ -48,7 +49,8 @@ impl Screen {
     }
 
     pub fn drawWorld(&mut self, world: &mut World) {
-        self.canvas.set_draw_color(sdl2::pixels::Color::RGB(255,255,0));
+        self.canvas.set_draw_color(sdl2::pixels::Color::BLACK);
+        self.canvas.clear();
         for r_item in world.renderable_items() {
             r_item.render(&mut self.canvas);
         }
