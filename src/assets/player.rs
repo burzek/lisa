@@ -7,8 +7,8 @@ use crate::core::controller::Controller;
 const PI_2_3: f32 = PI * 2.0 / 3.0;
 
 pub struct Player {
-    pos_x: u16,         //player position
-    pos_y: u16,
+    pos_x: f32,         //player position
+    pos_y: f32,
     heading: f32,       //heading in rads, 0 ->  PI <-
     speed_x: f32,       //speed in pixels/sec?
     speed_y: f32,
@@ -19,8 +19,8 @@ pub struct Player {
 impl Player {
     pub fn new() -> Player {
         Player {
-            pos_x : WINDOW_WIDTH / 2,
-            pos_y : WINDOW_WIDTH / 2,
+            pos_x : (WINDOW_WIDTH / 2) as f32,
+            pos_y : (WINDOW_WIDTH / 2) as f32,
             heading: 0.0,
             speed_x: 0.0,
             speed_y: 0.0,
@@ -57,23 +57,32 @@ impl Renderable for Player {
 impl Updatable for Player {
     fn update_state(&mut self, controller: &mut Controller) {
         if controller.is_key_pressed(sdl2::keyboard::Keycode::Up) {
-            self.thrust_acc += if self.thrust_acc > 1.0 {0.0} else {0.1};
+            self.thrust_acc += if self.thrust_acc > 1.0 {0.0} else {0.01};
+        } else {
+            self.thrust_acc = 0.0;
         }
         if controller.is_key_pressed(sdl2::keyboard::Keycode::Down) {
-            self.thrust -= if self.thrust <= 0.0 {0.0} else {self.thrust_acc};
+            self.thrust_acc -= if self.thrust_acc <= 0.0 {0.0} else {0.01};
+        } else {
+            self.thrust_acc = 0.0;
         }
+        
         self.thrust += if self.thrust > 5.0 {0.0} else {self.thrust_acc};
+        self.speed_x += self.speed_x + self.thrust * self.heading.cos();
+        self.speed_y += self.speed_y + self.thrust * self.heading.sin();
+        self.pos_x += self.speed_x;
+        self.pos_y += self.speed_y;
 
 
         if controller.is_key_pressed(sdl2::keyboard::Keycode::Left) {
-            self.heading -= 0.01;
+            self.heading -= 0.05;
         }
         if controller.is_key_pressed(sdl2::keyboard::Keycode::Right) {
-            self.heading += 0.01;
+            self.heading += 0.05;
         }
         self.heading = match self.heading {
-            h if h < 0.0 => h + PI,
-            h if h > PI => h - PI,
+            h if h < 0.0 => h + 2.0 * PI,
+            h if h > 2.0 * PI => h - 2.0 * PI,
             h => h
         }
 
