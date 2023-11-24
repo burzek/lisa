@@ -61,9 +61,9 @@ impl Updatable for Player {
         //thrust
         if controller.is_key_pressed(sdl2::keyboard::Keycode::Up) {
             self.thrust += 0.5;
-        } else if controller.is_key_pressed(sdl2::keyboard::Keycode::Down) {
-            self.thrust -= 0.5;
-        } 
+        } else {
+            self.thrust = 0.0;
+        }
         self.thrust = match self.thrust {
             t if t < 0.0 => 0.0,
             t if t > 100.0 => 100.0,
@@ -73,9 +73,10 @@ impl Updatable for Player {
         //heading
         if controller.is_key_pressed(sdl2::keyboard::Keycode::Left) {
             self.heading -= 0.05;
-        }
-        if controller.is_key_pressed(sdl2::keyboard::Keycode::Right) {
+        } else if controller.is_key_pressed(sdl2::keyboard::Keycode::Right) {
             self.heading += 0.05;
+        } else if controller.is_key_pressed(sdl2::keyboard::Keycode::Down) {
+            self.heading += PI; //todo prilis citlive, ak je stale stlaceny Down
         }
         self.heading = match self.heading {
             h if h < 0.0 => h + 2.0 * PI,
@@ -86,8 +87,8 @@ impl Updatable for Player {
 
         //compute
         let speed_pps = FPS as f32 * (self.thrust / 100.0);
-        self.speed_x = speed_pps * self.heading.cos();
-        self.speed_y = speed_pps * self.heading.sin();
+        self.speed_x += speed_pps * self.heading.cos();
+        self.speed_y += speed_pps * self.heading.sin();
 
 
         self.pos_x += self.speed_x;
