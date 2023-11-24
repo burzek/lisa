@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use sdl2::{render::WindowCanvas, pixels::Color, rect::Point};
-use crate::core::{video::{Renderable, Updatable}, constants::WINDOW_WIDTH};
+use crate::core::{video::{Renderable, Updatable}, constants::{WINDOW_WIDTH, FPS, self, WINDOW_HEIGHT}};
 use crate::core::controller::Controller;
 
 const PI_2_3: f32 = PI * 2.0 / 3.0;
@@ -12,8 +12,9 @@ pub struct Player {
     heading: f32,       //heading in rads, 0 ->  PI <-
     speed_x: f32,       //speed in pixels/sec?
     speed_y: f32,
+    m_x: f32,
+    m_y: f32,
     thrust: f32,        //current thrust 0-100%
-    thrust_acc: f32     //thrust acceleration
 }
 
 impl Player {
@@ -25,7 +26,8 @@ impl Player {
             speed_x: 0.0,
             speed_y: 0.0,
             thrust: 0.0,
-            thrust_acc: 0.0
+            m_x : 0.0,
+            m_y: 0.0
         }
     }
 }
@@ -56,24 +58,19 @@ impl Renderable for Player {
 
 impl Updatable for Player {
     fn update_state(&mut self, controller: &mut Controller) {
+        //thrust
         if controller.is_key_pressed(sdl2::keyboard::Keycode::Up) {
-            self.thrust_acc += if self.thrust_acc > 1.0 {0.0} else {0.01};
-        } else {
-            self.thrust_acc = 0.0;
-        }
-        if controller.is_key_pressed(sdl2::keyboard::Keycode::Down) {
-            self.thrust_acc -= if self.thrust_acc <= 0.0 {0.0} else {0.01};
-        } else {
-            self.thrust_acc = 0.0;
-        }
-        
-        self.thrust += if self.thrust > 5.0 {0.0} else {self.thrust_acc};
-        self.speed_x += self.speed_x + self.thrust * self.heading.cos();
-        self.speed_y += self.speed_y + self.thrust * self.heading.sin();
-        self.pos_x += self.speed_x;
-        self.pos_y += self.speed_y;
+            self.thrust += 0.5;
+        } else if controller.is_key_pressed(sdl2::keyboard::Keycode::Down) {
+            self.thrust -= 0.5;
+        } 
+        self.thrust = match self.thrust {
+            t if t < 0.0 => 0.0,
+            t if t > 100.0 => 100.0,
+            t => t
+        };
 
-
+        //heading
         if controller.is_key_pressed(sdl2::keyboard::Keycode::Left) {
             self.heading -= 0.05;
         }
@@ -84,7 +81,29 @@ impl Updatable for Player {
             h if h < 0.0 => h + 2.0 * PI,
             h if h > 2.0 * PI => h - 2.0 * PI,
             h => h
-        }
+        };
 
+
+        //compute
+        let speed_pps = FPS as f32 * (self.thrust / 100.0);
+        self.speed_x = speed_pps * self.heading.cos();
+        self.speed_y = speed_pps * self.heading.sin();
+
+
+        self.pos_x += self.speed_x;
+        self.pos_y += self.speed_y;
+        self.pos_x = match self.pos_x {
+            x if x > WINDOW_WIDTH as f32 => 0.0,
+            x if x < 0.0 => WINDOW_WIDTH as f32,
+            x => x
+        };
+        self.pos_y = match self.pos_y {
+            y if y > WINDOW_HEIGHT as f32 => 0.0,
+            y if y < 0.0 => WINDOW_HEIGHT as f32,
+            y => y
+        };
+        
+        
+        
     }
 }
