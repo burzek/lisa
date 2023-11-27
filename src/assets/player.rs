@@ -1,9 +1,13 @@
 use std::f32::consts::PI;
+use sdl2::{render::WindowCanvas, pixels::Color, rect::Point, sys::random};
+use rand::{Rng, thread_rng};
 
-use sdl2::{render::WindowCanvas, pixels::Color, rect::Point};
 use crate::core::{video::{Renderable, Updatable}, constants::{WINDOW_WIDTH, FPS, WINDOW_HEIGHT}};
 use crate::core::controller::Controller;
 use crate::assets::models::Dynamics;
+use crate::assets::weapon::Weapon;
+
+use super::{missile_triple::TripleMissile, missile_basic::BasicMissile};
 
 const PI_2_3: f32 = PI * 2.0 / 3.0;
 const TWO_PI: f32 = 2.0 * PI;
@@ -14,6 +18,7 @@ const THRUST_PER_FRAME: f32 = 0.025;
 
 pub struct Player {
     dynamics: Dynamics,
+    missiles: Vec<Weapon>,
 }
 
 impl Player {
@@ -25,6 +30,7 @@ impl Player {
                 speed_vector: (0.0, 0.0), 
                 thrust: 0.0 
             },
+            missiles: Vec::new()
         }
     }
 }
@@ -102,9 +108,15 @@ impl Updatable for Player {
 
 impl Player {
     pub fn fire(&mut self) {
-        // if self.active_fire_count > 5.0 {
-        //     return;
-        // }
+        if self.missiles.len() > 5 {
+            return;     //max 5 missiles at time
+        }
+
+        let w_type : f32 = thread_rng().gen();  //0.0-1.0
+        let weapon = match w_type {
+            v if v <= 0.5 => Weapon(BasicMissile()),
+            _ => Weapon(TripleMissile())
+        };
 
     }
 }
