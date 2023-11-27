@@ -21,5 +21,9 @@ impl Controller {
     pub fn is_key_pressed(&mut self, key_code: Keycode) -> bool {
         self.key_pressed.contains(&key_code)
     }
+    
+    pub fn is_key_pressed_once(&mut self, key_code: Keycode) -> bool {
+        self.key_pressed.remove(&key_code)
+    }
    
 }

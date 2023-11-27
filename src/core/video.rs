@@ -48,7 +48,7 @@ impl Screen {
         Ok(Screen {context, canvas})
     }
 
-    pub fn drawWorld(&mut self, world: &mut World) {
+    pub fn draw_world(&mut self, world: &mut World) {
         self.canvas.set_draw_color(sdl2::pixels::Color::BLACK);
         self.canvas.clear();
         for r_item in world.renderable_items() {

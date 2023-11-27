@@ -1,33 +1,30 @@
 use std::f32::consts::PI;
 
 use sdl2::{render::WindowCanvas, pixels::Color, rect::Point};
-use crate::core::{video::{Renderable, Updatable}, constants::{WINDOW_WIDTH, FPS, self, WINDOW_HEIGHT}};
+use crate::core::{video::{Renderable, Updatable}, constants::{WINDOW_WIDTH, FPS, WINDOW_HEIGHT}};
 use crate::core::controller::Controller;
+use crate::assets::models::Dynamics;
 
 const PI_2_3: f32 = PI * 2.0 / 3.0;
+const TWO_PI: f32 = 2.0 * PI;
+
+const THRUST_PER_FRAME: f32 = 0.025;
+
+
 
 pub struct Player {
-    pos_x: f32,         //player position
-    pos_y: f32,
-    heading: f32,       //heading in rads, 0 ->  PI <-
-    speed_x: f32,       //speed in pixels/sec?
-    speed_y: f32,
-    m_x: f32,
-    m_y: f32,
-    thrust: f32,        //current thrust 0-100%
+    dynamics: Dynamics,
 }
 
 impl Player {
     pub fn new() -> Player {
         Player {
-            pos_x : (WINDOW_WIDTH / 2) as f32,
-            pos_y : (WINDOW_WIDTH / 2) as f32,
-            heading: 0.0,
-            speed_x: 0.0,
-            speed_y: 0.0,
-            thrust: 0.0,
-            m_x : 0.0,
-            m_y: 0.0
+            dynamics: Dynamics { 
+                position: ((WINDOW_WIDTH / 2) as f32, (WINDOW_HEIGHT / 2) as f32), 
+                heading: 0.0, 
+                speed_vector: (0.0, 0.0), 
+                thrust: 0.0 
+            },
         }
     }
 }
@@ -36,15 +33,15 @@ impl Renderable for Player {
     fn render(&self, canvas : &mut WindowCanvas) {
         canvas.set_draw_color(Color::WHITE);
 
-        let xf32 : f32 = self.pos_x as f32;        
-        let yf32 : f32 = self.pos_y as f32;        
+        let xf32 : f32 = self.dynamics.position.0 as f32;        
+        let yf32 : f32 = self.dynamics.position.1 as f32;        
 
-        let x_a = xf32 + 20.0 * self.heading.cos();
-        let y_a = yf32 + 20.0 * self.heading.sin();
-        let x_b = xf32 + 10.0 * (self.heading - PI_2_3).cos();
-        let y_b = yf32 + 10.0 * (self.heading - PI_2_3).sin();
-        let x_c = xf32 + 10.0 * (self.heading + PI_2_3).cos();
-        let y_c = yf32 + 10.0 * (self.heading + PI_2_3).sin();
+        let x_a = xf32 + 20.0 * self.dynamics.heading.cos();
+        let y_a = yf32 + 20.0 * self.dynamics.heading.sin();
+        let x_b = xf32 + 10.0 * (self.dynamics.heading - PI_2_3).cos();
+        let y_b = yf32 + 10.0 * (self.dynamics.heading - PI_2_3).sin();
+        let x_c = xf32 + 10.0 * (self.dynamics.heading + PI_2_3).cos();
+        let y_c = yf32 + 10.0 * (self.dynamics.heading + PI_2_3).sin();
 
         let _ = canvas.draw_lines([
             Point::new(x_a as i32, y_a as i32), 
@@ -58,53 +55,56 @@ impl Renderable for Player {
 
 impl Updatable for Player {
     fn update_state(&mut self, controller: &mut Controller) {
+        
         //thrust
         if controller.is_key_pressed(sdl2::keyboard::Keycode::Up) {
-            self.thrust += 0.5;
+            self.dynamics.thrust += THRUST_PER_FRAME;
         } else {
-            self.thrust = 0.0;
+            self.dynamics.thrust = 0.0;
         }
-        self.thrust = match self.thrust {
-            t if t < 0.0 => 0.0,
-            t if t > 100.0 => 100.0,
-            t => t
-        };
+        self.dynamics.thrust = if self.dynamics.thrust < 0.0 {0.0} else if self.dynamics.thrust > 100.0 {100.0} else {self.dynamics.thrust};
 
         //heading
         if controller.is_key_pressed(sdl2::keyboard::Keycode::Left) {
-            self.heading -= 0.05;
+            self.dynamics.heading -= 0.05;
         } else if controller.is_key_pressed(sdl2::keyboard::Keycode::Right) {
-            self.heading += 0.05;
-        } else if controller.is_key_pressed(sdl2::keyboard::Keycode::Down) {
-            self.heading += PI; //todo prilis citlive, ak je stale stlaceny Down
+            self.dynamics.heading += 0.05;
+        } else if controller.is_key_pressed_once(sdl2::keyboard::Keycode::Down) {
+            self.dynamics.heading += PI;
+        } else if controller.is_key_pressed(sdl2::keyboard::Keycode::Space) {
+            self.fire();
         }
-        self.heading = match self.heading {
-            h if h < 0.0 => h + 2.0 * PI,
-            h if h > 2.0 * PI => h - 2.0 * PI,
-            h => h
-        };
+        self.dynamics.heading = if self.dynamics.heading < 0.0 {self.dynamics.heading + TWO_PI} 
+            else if self.dynamics.heading > TWO_PI {self.dynamics.heading - TWO_PI} 
+            else {self.dynamics.heading};
 
 
-        //compute
-        let speed_pps = FPS as f32 * (self.thrust / 100.0);
-        self.speed_x += speed_pps * self.heading.cos();
-        self.speed_y += speed_pps * self.heading.sin();
 
+        //compute speed vector
+        let speed_pps = FPS as f32 * (self.dynamics.thrust / 100.0);
+        self.dynamics.speed_vector.0 = (self.dynamics.speed_vector.0 + speed_pps * self.dynamics.heading.cos()).min(10.0);
+        self.dynamics.speed_vector.1 = (self.dynamics.speed_vector.1 + speed_pps * self.dynamics.heading.sin()).min(10.0);
+       
+        self.dynamics.position.0 += self.dynamics.speed_vector.0;
+        self.dynamics.position.1 += self.dynamics.speed_vector.1;
+        self.dynamics.position.0 = if self.dynamics.position.0 > WINDOW_WIDTH as f32 {0.0} 
+            else if self.dynamics.position.0 < 0.0 {WINDOW_WIDTH as f32} 
+            else {self.dynamics.position.0};
+        self.dynamics.position.1 = if self.dynamics.position.1 > WINDOW_HEIGHT as f32 {0.0} 
+            else if self.dynamics.position.1 < 0.0 {WINDOW_HEIGHT as f32} 
+            else {self.dynamics.position.1};
 
-        self.pos_x += self.speed_x;
-        self.pos_y += self.speed_y;
-        self.pos_x = match self.pos_x {
-            x if x > WINDOW_WIDTH as f32 => 0.0,
-            x if x < 0.0 => WINDOW_WIDTH as f32,
-            x => x
-        };
-        self.pos_y = match self.pos_y {
-            y if y > WINDOW_HEIGHT as f32 => 0.0,
-            y if y < 0.0 => WINDOW_HEIGHT as f32,
-            y => y
-        };
         
         
         
+    }
+}
+
+impl Player {
+    pub fn fire(&mut self) {
+        // if self.active_fire_count > 5.0 {
+        //     return;
+        // }
+
     }
 }

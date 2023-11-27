@@ -1,5 +1,5 @@
 use sdl2::{event::Event, keyboard::Keycode};
-
+use sdl2::gfx::framerate::FPSManager;
 use crate::{core::{video::Screen, constants, controller::Controller}, assets::world::World};
 
 pub struct Game {
@@ -19,6 +19,12 @@ impl Game {
 
     pub fn start_game(&mut self) {
         log::debug!("Starting main game loop");
+
+        let mut fps_manager = FPSManager::new();
+        let _ = fps_manager.set_framerate(constants::FPS);
+
+
+
         //start main game loop
         let mut event_pump = self.screen.get_event_pump().unwrap();
         'running: loop {
@@ -39,10 +45,11 @@ impl Game {
                     _ => {}
                 }
             }
-            ::std::thread::sleep(std::time::Duration::new(0, 1_000_000_000u32 / constants::FPS));
+            
+            fps_manager.delay();
 
-            self.world.updateWorld(&mut self.controller);
-            self.screen.drawWorld(&mut self.world);    
+            self.world.update_world(&mut self.controller);
+            self.screen.draw_world(&mut self.world);    
 
         }
     }

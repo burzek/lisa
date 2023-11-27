@@ -7,6 +7,7 @@ use super::player::Player;
 
 pub struct World {
     player: Player
+    //planetoid: Vec<Planetoid>
 }
 
 impl World {
@@ -17,7 +18,7 @@ impl World {
         Ok(world)
     }
 
-    pub fn updateWorld(&mut self, controller: &mut Controller) {
+    pub fn update_world(&mut self, controller: &mut Controller) {
         self.player.update_state(controller);
     }
 
